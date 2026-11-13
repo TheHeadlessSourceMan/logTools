@@ -4,8 +4,10 @@ Read log files in arbirtrary fixed-width formats
 import typing
 import os
 import datetime
-from dateTools.dateRanges import DateRangeSimpleCompatible, DateRangeSimple
-from paths import UrlCompatible,isURLCompatible,asURL,FileLocationCompatible,FileLocation,Url
+from dateTools.dateRanges import DateRangeSimpleCompatible,DateRangeSimple
+from paths import (
+    UrlCompatible,isURLCompatible,asURL,
+    FileLocationCompatible,FileLocation,Url)
 
 
 class DateRangedFile(DateRangeSimple):
@@ -16,8 +18,9 @@ class DateRangedFile(DateRangeSimple):
         self.url:Url=asURL(path)
         filename=self.url.filePath
         if filename is None:
-            # TODO: even throuh we can't limit by date, we should still allow this to be readable!
-            raise Exception(f'Cannot get file time for an online url "{self.url}"')
+            # TODO: even throuh we can't limit by date,
+            # we should still allow this to be readable!
+            raise Exception(f'Cannot get file time for an online url "{self.url}"') # noqa: E501
         created=datetime.datetime.fromtimestamp(os.path.getctime(filename))
         modified=datetime.datetime.fromtimestamp(os.path.getmtime(filename))
         DateRangeSimple.__init__(self,(created,modified))
@@ -38,7 +41,7 @@ class DateRangedFile(DateRangeSimple):
         What time the file was last modified.
         """
         return self.end
-    @created.setter
+    @modified.setter
     def modified(self,modified:datetime.datetime):
         self.end=modified
 
@@ -51,10 +54,13 @@ class DateRangedFile(DateRangeSimple):
 
 class DateRangedFiles:
     """
-    A group of files where each also acts like a date range (created_date, modified_date) 
+    A group of files where each also acts like a date range
+    (created_date, modified_date)
     """
 
-    def __init__(self,filenames:typing.Union[UrlCompatible,typing.Iterable[UrlCompatible]]):
+    def __init__(self,
+        filenames:typing.Union[UrlCompatible,typing.Iterable[UrlCompatible]]):
+        """ """
         self._files:typing.List[DateRangedFile]=[]
         self.assign(filenames)
 
@@ -66,7 +72,8 @@ class DateRangedFiles:
         return self._files
 
     def assign(self,
-        filenames:typing.Union[UrlCompatible,typing.Iterable[UrlCompatible]])->None:
+        filenames:typing.Union[UrlCompatible,typing.Iterable[UrlCompatible]]
+        )->None:
         """
         Assign new files to this group, replacing any existing files
         """
@@ -75,7 +82,8 @@ class DateRangedFiles:
         self._files=[DateRangedFile(filename) for filename in filenames]
 
     def filter(self,
-        dateRange:DateRangeSimpleCompatible)->typing.Generator[DateRangedFile,None,None]:
+        dateRange:DateRangeSimpleCompatible
+        )->typing.Generator[DateRangedFile,None,None]:
         """
         Filter the files in this group by a date range
         """
@@ -147,14 +155,17 @@ class LogFile(DateRangedFile):
                 result.append(i)
         return result
 
-    def _getIndices(self,f:typing.Iterable[str])->typing.Iterable[typing.Tuple[int,str]]:
+    def _getIndices(self,
+        f:typing.Iterable[str]
+        )->typing.Iterable[typing.Tuple[int,str]]:
         """
         returns (index,char) for every splitting token
         """
         indices_per_token=[None for tb in self.TOKEN_BREAKS]
         for line in f:
             for i,tb in enumerate(self.TOKEN_BREAKS):
-                indices_per_token[i]=self._getLineIndices(tb,line,indices_per_token[i])
+                indices_per_token[i]=self._getLineIndices(
+                    tb,line,indices_per_token[i])
         results:typing.List[typing.Tuple[int,str]]=[]
         for token,indices in zip(self.TOKEN_BREAKS,indices_per_token):
             for i in indices:
@@ -172,7 +183,8 @@ class LogFile(DateRangedFile):
             if len(tsl)!=2:
                 continue
             try:
-                timestamp=datetime.datetime.strptime(tsl[0].strip(),"%m/%d/%y %H:%M:%S")
+                timestamp=datetime.datetime.strptime(
+                    tsl[0].strip(),"%m/%d/%y %H:%M:%S")
             except Exception:
                 print(f'Unable to convert "{tsl[0]}" to date. Skipping line.')
                 continue
@@ -183,17 +195,21 @@ class LogFile(DateRangedFile):
 
     def filter(self,
         dateRange:typing.Optional[DateRangeSimpleCompatible]=None,
-        matching:typing.Optional[typing.Iterable[typing.Union[str,typing.Pattern]]]=None,
-        notMatching:typing.Optional[typing.Iterable[typing.Union[str,typing.Pattern]]]=None
+        matching:typing.Optional[typing.Iterable[typing.Union[
+            str,typing.Pattern[str]]]]=None,
+        notMatching:typing.Optional[typing.Iterable[typing.Union[
+            str,typing.Pattern[str]]]]=None
         )->typing.Generator[LogEntry,None,None]:
         """
         must be in the dateRange if specified
         must be in one of matching if specified
         must not be in one of notMatching if specified
         """
+        self.entries=typing.cast(typing.List[LogEntry],self.entries)
         for entry in self.entries:
             if dateRange is not None:
-                if entry.timestamp<dateRange[0] or entry.timestamp>dateRange[1]:
+                if entry.timestamp<dateRange[0] \
+                    or entry.timestamp>dateRange[1]:
                     continue
             if matching is not None:
                 found=False
@@ -245,17 +261,21 @@ class Logjam(DateRangedFiles):
 
     def filterGen(self,
         dateRange:typing.Optional[DateRangeSimpleCompatible]=None,
-        matching:typing.Optional[typing.Iterable[typing.Union[str,typing.Pattern]]]=None,
-        notMatching:typing.Optional[typing.Iterable[typing.Union[str,typing.Pattern]]]=None
+        matching:typing.Optional[typing.Iterable[typing.Union[
+            str,typing.Pattern[str]]]]=None,
+        notMatching:typing.Optional[typing.Iterable[typing.Union[
+            str,typing.Pattern[str]]]]=None
         )->typing.Generator[LogEntry,None,None]:
         """
-        Slightly faster filter() function if you don't care about the results being in order
+        Slightly faster filter() function if you don't care about
+        the results being in order
 
         must be in the dateRange if specified
         must be in one of matching if specified
         must not be in one of notMatching if specified
 
-        NOTE: if you can filter by date, you should.  It can skip entire files!
+        NOTE: if you can filter by date, you should.
+        It can skip entire files!
         """
         if self.useFileDates and dateRange:
             logfiles=DateRangedFiles.filter(self,dateRange)
@@ -266,17 +286,21 @@ class Logjam(DateRangedFiles):
 
     def filter(self,
         dateRange:typing.Optional[DateRangeSimpleCompatible]=None,
-        matching:typing.Optional[typing.Iterable[typing.Union[str,typing.Pattern]]]=None,
-        notMatching:typing.Optional[typing.Iterable[typing.Union[str,typing.Pattern]]]=None
+        matching:typing.Optional[typing.Iterable[typing.Union[
+            str,typing.Pattern[str]]]]=None,
+        notMatching:typing.Optional[typing.Iterable[typing.Union[
+            str,typing.Pattern[str]]]]=None
         )->typing.Iterable[LogEntry]:
         """
-        Like filterGen, but everything is in correct date order (at the cost of a slower function)
+        Like filterGen, but everything is in correct date order
+        (at the cost of a slower function)
 
         must be in the dateRange if specified
         must be in one of matching if specified
         must not be in one of notMatching if specified
 
-        NOTE: if you can filter by date, you should.  It can skip entire files!
+        NOTE: if you can filter by date, you should.
+        It can skip entire files!
         """
         ret=list(self.filterGen(dateRange,matching,notMatching))
         ret.sort()
